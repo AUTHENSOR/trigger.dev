@@ -218,6 +218,24 @@ describe("snapshotTranscriptStorage", () => {
     __setWriteChatSnapshotImplForTests(undefined);
   });
 
+  it("reports which loaded messages were saved as partial", async () => {
+    install({
+      version: 2,
+      savedAt: 5,
+      messages: [
+        { id: "u-1", final: true, message: u1 },
+        { id: "a-1", final: false, message: a1 },
+      ],
+      state: null,
+    });
+    const storage = snapshotTranscriptStorage();
+    const loaded = await storage.load({ chatId: "c1", clientData: undefined });
+    expect(loaded.nonFinalIds).toEqual(["a-1"]);
+    expect(createTranscriptShadow(loaded.messages, new Set(loaded.nonFinalIds)).nonFinal).toEqual(
+      new Set(["a-1"])
+    );
+  });
+
   it("loads a version 1 blob as messages plus cursors with null state", async () => {
     install({
       version: 1,
@@ -244,6 +262,7 @@ describe("snapshotTranscriptStorage", () => {
       state: null,
       cursors: undefined,
       nextCursor: undefined,
+      nonFinalIds: [],
     });
   });
 
@@ -259,6 +278,7 @@ describe("snapshotTranscriptStorage", () => {
     const last = await storage.load({ chatId: "c1", clientData: undefined }, { limit: 2 });
     expect(last.messages.map((m) => m.id)).toEqual(["u-2", "a-2"]);
     expect(last.nextCursor).toBe("u-2");
+    expect(last.nonFinalIds).toEqual([]);
 
     const prev = await storage.load(
       { chatId: "c1", clientData: undefined },
